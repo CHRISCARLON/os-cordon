@@ -2,6 +2,18 @@
 
 A Python library for working with Ordnance Survey's NGD Trasnport colletion and creating buffer zones USRNs (Unique Street Reference Numbers) and associated Road Links.
 
+Construct more detailed geometries from bounding boxes.
+
+**Connected Routes**
+<img width="1180" height="596" alt="Screenshot 2025-09-24 at 23 42 41" src="https://github.com/user-attachments/assets/b4aa3a86-1e87-40fd-b4a5-98457992abb4" />
+
+<img width="1180" height="596" alt="Screenshot 2025-09-24 at 23 42 52" src="https://github.com/user-attachments/assets/6c8717c7-4982-41cf-9f29-6c2c1c84be17" />
+
+**Single Streets**
+<img width="1180" height="596" alt="Screenshot 2025-09-24 at 23 42 06" src="https://github.com/user-attachments/assets/eeb1b200-616e-4a48-ba79-e7df17830ede" />
+
+<img width="1180" height="596" alt="Screenshot 2025-09-24 at 23 42 30" src="https://github.com/user-attachments/assets/804ff4b8-635b-4801-8790-c307a7817585" />
+
 ## Features
 
 - Fetch street data from Ordnance Survey APIs using USRNs

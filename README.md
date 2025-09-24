@@ -148,7 +148,7 @@ bounding_box = gdf[gdf["type"] == "route_bounds"]     # Single bounding rectangl
 
 ## Examples
 
-See `starter_guide.ipynb` for complete examples including:
+See `cordon_quick_start.ipynb` for complete examples including:
 
 - Single street buffers
 - Multiple street routes

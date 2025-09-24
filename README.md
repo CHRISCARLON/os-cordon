@@ -1,6 +1,6 @@
 # OSCordon
 
-A Python library for working with Ordnance Survey's NGD Trasnport colletion and creating buffer zones USRNs (Unique Street Reference Numbers) and associated Road Links.
+A Python library for working with Ordnance Survey's NGD Trasnport colletion and creating buffers for USRNs (Unique Street Reference Numbers) and associated Road Links.
 
 Construct more detailed geometries from bounding boxes.
 

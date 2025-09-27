@@ -1,21 +1,20 @@
 import asyncio
 import os
 from itertools import chain
-from typing import Any, Dict, List, Literal, Optional, Tuple, Union
+from typing import Any, Dict, List, Literal, Optional, Tuple
 from urllib.parse import urlencode
 
 import aiohttp
 import geopandas as gpd
-from loguru import logger
-from shapely.geometry import LineString, Polygon
-from shapely.ops import unary_union
-
-from .errors import (
+from errors import (
     APIError,
     APIKeyError,
     RateLimitError,
     USRNNotFoundError,
 )
+from loguru import logger
+from shapely.geometry import LineString
+from shapely.ops import unary_union
 
 
 class RoadLinkObject:
@@ -195,7 +194,7 @@ class RoadLinkObject:
             return None
 
     # ============================================================================
-    # ASYNC MAIN DATA FETCHING - Primary method with parallel fetching
+    # ASYNC DATA FETCHING - Standalone method with parallel fetching
     # ============================================================================
 
     async def get_road_data_async(
@@ -215,6 +214,14 @@ class RoadLinkObject:
         Returns:
             dict - Contains roadlink data organised by USRN with node connectivity info
         """
+
+        if len(usrn_list) < 2:
+            raise ValueError("Must provide more than 1 usrn")
+
+        unique_usrns = list(set(usrn_list))
+        if len(unique_usrns) != len(usrn_list):
+            raise ValueError("USRNs must be distinct. You can't have duplicate USRNs.")
+
         all_roadlinks = {}
         roadlink_to_usrn = {}
         all_nodes = {}
@@ -463,14 +470,14 @@ class RoadLinkObject:
         return gdf
 
 
-
 # Example usage
 async def main():
     """Example of using the async-only RoadLinkObject"""
     async with RoadLinkObject() as road_obj:
-        usrn_list = ["23002930", "23002720"]
+        usrn_list = ["23002930", "23002930"]
         road_data = await road_obj.get_road_data_async(usrn_list, batch_size=10)
         print(road_data)
+
 
 if __name__ == "__main__":
     asyncio.run(main())

@@ -17,11 +17,11 @@ Construct more detailed geometries from bounding boxes.
 ## Features
 
 - Fetch street data from Ordnance Survey APIs using USRNs
-- Create buffer zones around streets with customisable parameters
-- Generate bounding boxes for multiple streets
+- Create buffer zones around streets/road links with customisable parameters
+- Generate bounding boxes for multiple streets/road links
 - Support for both individual and merged buffer polygons
 - Compatible with lonboard for interactive mapping
-- Built-in crs (EPSG:27700 -> EPSG:4326)
+- Built-in crs conversion (EPSG:27700 -> EPSG:4326)
 
 ## Quick Start
 
@@ -35,7 +35,7 @@ export OS_KEY="your_ordnance_survey_api_key"
 
 ```python
 # Simple Bounding Box and Single USRN
-os_obj = OSObject()
+os_obj = UsrnObject()
 usrn = "23009365"
 street_data = os_obj.get_street_data(usrn)
 
@@ -63,99 +63,6 @@ boundary_layer = PolygonLayer.from_geopandas(
 
 # Simple Bounding Box
 Map(layers=[usrn_layer, boundary_layer])
-```
-
-## Main Functions
-
-### `create_buffer()`
-
-Create buffer zones around individual streets.
-
-- **Returns**: Bounds tuple or Polygon geometry
-- **Use case**: Single street
-
-### `create_proximity()`
-
-Handle multiple streets that are close but not connected.
-
-- **Returns**: GeoDataFrame with individual buffers or bounding box
-- **Use case**: Scattered nearby streets
-
-### `create_connected_route()`
-
-Create merged buffer zones for connected street routes.
-
-- **Returns**: GeoDataFrame with merged buffers or bounding box
-- **Use case**: Continuous routes and corridors
-
-## Buffer Configuration
-
-Customise buffer shapes with the `buffer_config` parameter:
-
-```python
-config = {
-    "cap_style": "round",      # "round", "flat", "square"
-    "join_style": "round",     # "round", "mitre", "bevel"
-    "resolution": 16,          # Higher = smoother curves
-    "mitre_limit": 5.0,        # For mitre joins
-    "single_sided": False      # One-sided buffers
-}
-```
-
-## GeoDataFrame Type Reference
-
-Each function returns different geometry types that you can filter for mapping:
-
-### `create_buffer()` + `convert_to_wgs84()`
-
-Single street only:
-
-```python
-roads = gdf[gdf["type"] == "usrn"]        # Street line
-boundary = gdf[gdf["type"] == "boundary"] # Buffer polygon
-```
-
-### `create_proximity()`
-
-Multiple streets, close but not connected:
-
-**When `return_geometry=True`:**
-
-```python
-roads = gdf[gdf["type"] == "usrn"]                    # Individual street lines
-individual_buffers = gdf[gdf["type"] == "buffer"]     # Individual buffer polygons
-```
-
-**When `return_geometry=False`:**
-
-```python
-roads = gdf[gdf["type"] == "usrn"]                    # Individual street lines
-bounding_box = gdf[gdf["type"] == "route_bounds"]     # Single bounding rectangle
-```
-
-### `create_connected_route()`
-
-Multiple streets forming a connected route:
-
-**When `return_geometry=True` + `merge_buffers=True` (default):**
-
-```python
-roads = gdf[gdf["type"] == "usrn"]                    # Individual street lines
-merged_buffer = gdf[gdf["type"] == "route_buffer"]    # Single merged buffer
-```
-
-**When `return_geometry=True` + `merge_buffers=False`:**
-
-```python
-roads = gdf[gdf["type"] == "usrn"]                    # Individual street lines
-individual_buffers = gdf[gdf["type"] == "buffer"]     # Individual buffer polygons
-```
-
-**When `return_geometry=False`:**
-
-```python
-roads = gdf[gdf["type"] == "usrn"]                    # Individual street lines
-bounding_box = gdf[gdf["type"] == "route_bounds"]     # Single bounding rectangle
 ```
 
 ## Examples

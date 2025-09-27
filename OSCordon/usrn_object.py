@@ -27,10 +27,18 @@ from .errors import (
 )
 
 # TODO: Add Pydantic models for return types
+# TODO: Make async
 
-class OSObject:
+
+class UsrnObject:
     """
-    Returns an OSDataObject.
+    A class for fetching and processing OS USRN (Unique Street Reference Number) data.
+
+    Provides methods for:
+    - Fetching street data from OS API by USRN
+    - Creating buffers around street geometries
+    - Building proximity-based and connected routes
+    - Converting between coordinate systems
     """
 
     def __init__(self) -> None:
@@ -42,6 +50,10 @@ class OSObject:
             )
         self.base_path = "https://api.os.uk/features/ngd/ofa/v1/{}"
         self.collection_feature = self.base_path.format("collections/{}/items")
+
+    # ============================================================================
+    # CORE API METHODS - Low-level data fetching
+    # ============================================================================
 
     def _fetch_data(self, endpoint: str) -> dict:
         """
@@ -120,6 +132,10 @@ class OSObject:
         logger.success("USRN Data Found")
         return result
 
+    # ============================================================================
+    # SINGLE USRN DATA FETCHING - Primary methods for getting street data
+    # ============================================================================
+
     def get_street_data(
         self,
         usrn: str,
@@ -142,82 +158,6 @@ class OSObject:
             query_attr_value=usrn,
             crs=crs,
         )
-
-    def convert_to_wgs84(
-        self,
-        street_data: dict,
-        bbox: Optional[
-            Union[Tuple[float, float, float, float], Polygon, MultiPolygon]
-        ] = None,
-    ) -> gpd.GeoDataFrame:
-        """
-        Convert USRN geometry and optionally a bbox from EPSG:27700 to EPSG:4326 (WGS84)
-        Returns a GeoDataFrame suitable for use with lonboard
-
-        Args:
-            street_data: dict - The street data returned from get_street_data() in EPSG:27700
-            bbox: Optional[Union[Tuple, Polygon, MultiPolygon]] - Bounding box as tuple (minx, miny, maxx, maxy), Polygon, or MultiPolygon geometry in EPSG:27700
-
-        Returns:
-            GeoDataFrame - Contains USRN line and boundary polygon in WGS84 format
-        """
-        if not street_data.get("features"):
-            raise EmptyDataError("features")
-
-        feature = street_data["features"][0]
-        geometry = feature.get("geometry", {})
-
-        if geometry.get("type") != "MultiLineString":
-            raise InvalidGeometryError("MultiLineString", geometry.get("type", "None"))
-
-        # Prepare data for GeoDataFrame
-        data = []
-        geometries = []
-
-        # Add USRN geometry
-        usrn_geom = MultiLineString(geometry["coordinates"])
-        data.append(
-            {
-                "type": "usrn",
-                "usrn": feature.get("properties", {}).get("usrn"),
-                "street_name": feature.get("properties", {}).get("street_description"),
-            }
-        )
-        geometries.append(usrn_geom)
-
-        # Add boundary
-        if bbox is not None:
-            # Handle tuple, Polygon, and MultiPolygon inputs
-            if isinstance(bbox, tuple):
-                minx, miny, maxx, maxy = bbox
-                bbox_geom = box(minx, miny, maxx, maxy)
-            elif isinstance(bbox, (Polygon, MultiPolygon)):
-                bbox_geom = bbox
-            else:
-                raise InvalidGeometryError(
-                    "Tuple, Polygon, or MultiPolygon", str(type(bbox))
-                )
-
-            data.append(
-                {
-                    "type": "boundary",
-                    "usrn": feature.get("properties", {}).get("usrn"),
-                    "street_name": feature.get("properties", {}).get(
-                        "street_description"
-                    ),
-                }
-            )
-            geometries.append(bbox_geom)
-
-        # Create GeoDataFrame in EPSG:27700
-        gdf = gpd.GeoDataFrame(data, geometry=geometries, crs="EPSG:27700")
-
-        # Convert to WGS84
-        gdf_wgs84 = gdf.to_crs("EPSG:4326")
-
-        logger.success(f"Converted {len(gdf_wgs84)} geometries to WGS84")
-        logger.debug(gdf_wgs84)
-        return gdf_wgs84
 
     def get_multiple_streets(
         self,
@@ -250,6 +190,10 @@ class OSObject:
 
         logger.success(f"Retrieved {len(street_data_list)} of {len(usrn_list)} USRNs")
         return street_data_list
+
+    # ============================================================================
+    # BUFFER OPERATIONS - Creating buffers around street geometries
+    # ============================================================================
 
     def create_buffer(
         self,
@@ -346,6 +290,90 @@ class OSObject:
                 f"Simple Tuple Bounding Box Created Successfully (cap: {cap_style}, join: {join_style})"
             )
             return bounds
+
+    # ============================================================================
+    # COORDINATE SYSTEM CONVERSION - CRS transformation utilities
+    # ============================================================================
+
+    def convert_to_wgs84(
+        self,
+        street_data: dict,
+        bbox: Optional[
+            Union[Tuple[float, float, float, float], Polygon, MultiPolygon]
+        ] = None,
+    ) -> gpd.GeoDataFrame:
+        """
+        Convert USRN geometry and optionally a bbox from EPSG:27700 to EPSG:4326 (WGS84)
+        Returns a GeoDataFrame suitable for use with lonboard
+
+        Args:
+            street_data: dict - The street data returned from get_street_data() in EPSG:27700
+            bbox: Optional[Union[Tuple, Polygon, MultiPolygon]] - Bounding box as tuple (minx, miny, maxx, maxy), Polygon, or MultiPolygon geometry in EPSG:27700
+
+        Returns:
+            GeoDataFrame - Contains USRN line and boundary polygon in WGS84 format
+        """
+        if not street_data.get("features"):
+            raise EmptyDataError("features")
+
+        feature = street_data["features"][0]
+        geometry = feature.get("geometry", {})
+
+        if geometry.get("type") != "MultiLineString":
+            raise InvalidGeometryError("MultiLineString", geometry.get("type", "None"))
+
+        # Prepare data for GeoDataFrame
+        data = []
+        geometries = []
+
+        # Add USRN geometry
+        usrn_geom = MultiLineString(geometry["coordinates"])
+        data.append(
+            {
+                "type": "usrn",
+                "usrn": feature.get("properties", {}).get("usrn"),
+                "street_name": feature.get("properties", {}).get("street_description"),
+            }
+        )
+        geometries.append(usrn_geom)
+
+        # Add boundary
+        if bbox is not None:
+            # Handle tuple, Polygon, and MultiPolygon inputs
+            if isinstance(bbox, tuple):
+                minx, miny, maxx, maxy = bbox
+                bbox_geom = box(minx, miny, maxx, maxy)
+            elif isinstance(bbox, (Polygon, MultiPolygon)):
+                bbox_geom = bbox
+            else:
+                raise InvalidGeometryError(
+                    "Tuple, Polygon, or MultiPolygon", str(type(bbox))
+                )
+
+            data.append(
+                {
+                    "type": "boundary",
+                    "usrn": feature.get("properties", {}).get("usrn"),
+                    "street_name": feature.get("properties", {}).get(
+                        "street_description"
+                    ),
+                }
+            )
+            geometries.append(bbox_geom)
+
+        # Create GeoDataFrame in EPSG:27700
+        gdf = gpd.GeoDataFrame(data, geometry=geometries, crs="EPSG:27700")
+
+        # Convert to WGS84
+        gdf_wgs84 = gdf.to_crs("EPSG:4326")
+
+        logger.success(f"Converted {len(gdf_wgs84)} geometries to WGS84")
+        logger.debug(gdf_wgs84)
+        return gdf_wgs84
+
+    # ============================================================================
+    # PROXIMITY ROUTES - Creating routes for nearby but not connected streets
+    # ============================================================================
 
     def _create_proximity_bbox_only(
         self, street_data_list: list[dict], buffer_distance: float, buffer_config: dict
@@ -539,6 +567,10 @@ class OSObject:
             street_data_list, usrn_list, buffer_distance, buffer_config, include_buffers
         )
 
+    # ============================================================================
+    # CONNECTED ROUTES - Creating routes for connected streets (e.g., planned routes)
+    # ============================================================================
+
     def _create_ful_route_bbox_only(
         self, street_data_list: list[dict], buffer_distance: float, buffer_config: dict
     ) -> gpd.GeoDataFrame:
@@ -669,9 +701,7 @@ class OSObject:
             )
             all_buffers.append(buffer_geom)
 
-        # Add merged or individual buffers
         if merge_buffers and all_buffers:
-            # Merge all buffers into one continuous polygon
             merged_buffer = unary_union(all_buffers)
             all_data.append(
                 {
@@ -683,7 +713,6 @@ class OSObject:
             )
             all_geometries.append(merged_buffer)
         else:
-            # Add individual buffers
             for idx, buffer_geom in enumerate(all_buffers):
                 all_data.append(
                     {
@@ -695,7 +724,6 @@ class OSObject:
                 )
                 all_geometries.append(buffer_geom)
 
-        # Create and return GeoDataFrame
         gdf = gpd.GeoDataFrame(all_data, geometry=all_geometries, crs="EPSG:27700")
         gdf_wgs84 = gdf.to_crs("EPSG:4326")
         logger.success(
